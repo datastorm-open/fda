@@ -1,8 +1,5 @@
 \name{fRegress}
 \alias{fRegress}
-\alias{fRegress.fd}
-\alias{fRegress.fdPar}
-\alias{fRegress.numeric}
 \alias{fRegress.formula}
 \alias{fRegress.character}
 \title{
@@ -12,10 +9,12 @@
   This function carries out a functional regression analysis, where
   either the dependent variable or one or more independent variables are
   functional.  Non-functional variables may be used on either side
-  of the equation.  In a simple problem where there is a single scalar
+  of the equation.  
+  
+  In a simple problem where there is a scalar dependent variable \eqn{y_i}, a single
   independent covariate with values \eqn{z_i, i=1,\ldots,N} and a single
-  functional covariate with values \eqn{x_i(t)}, the two versions of the
-  model fit by \code{fRegress} are the \emph{scalar} dependent variable
+  functional covariate with values \eqn{x_i(t)}, the 
+  model fit by \code{fRegress} is the \emph{scalar} dependent variable
   model
 
   \deqn{y_i = \beta_1 z_i + \int x_i(t) \beta_2(t) \, dt + e_i}
@@ -42,19 +41,11 @@
   argument list as functional parameter objects.
 }
 \usage{
-fRegress(y, ...)
+fRegress(y, xfdlist, betalist, wt=NULL, returnMatrix=FALSE, ...)
 \method{fRegress}{formula}(y, data=NULL, betalist=NULL, wt=NULL,
-                 y2cMap=NULL, SigmaE=NULL,
                  method=c('fRegress', 'model'), sep='.', ...)
 \method{fRegress}{character}(y, data=NULL, betalist=NULL, wt=NULL,
-                 y2cMap=NULL, SigmaE=NULL,
                  method=c('fRegress', 'model'), sep='.', ...)
-\method{fRegress}{fd}(y, xfdlist, betalist, wt=NULL,
-                     y2cMap=NULL, SigmaE=NULL, returnMatrix=FALSE, ...)
-\method{fRegress}{fdPar}(y, xfdlist, betalist, wt=NULL,
-                     y2cMap=NULL, SigmaE=NULL, returnMatrix=FALSE, ...)
-\method{fRegress}{numeric}(y, xfdlist, betalist, wt=NULL,
-                     y2cMap=NULL, SigmaE=NULL, returnMatrix=FALSE, ...)
 }
 \arguments{
   \item{y}{
@@ -66,7 +57,6 @@ fRegress(y, ...)
 	a \code{formula} object or a \code{character} object that can be
 	coerced into a \code{formula} providing a symbolic description
 	of the model to be fitted satisfying the following rules:
-
 	The left hand side, \code{formula} \code{y}, must be either a
 	numeric vector or a univariate object of class \code{fd} or
 	\code{fdPar}.  If the former, it is replaced by \code{fdPar(y,
@@ -165,16 +155,6 @@ fRegress(y, ...)
   \item{wt}{
     weights for weighted least squares
   }
-  \item{y2cMap}{
-    the matrix mapping from the vector of observed values to the
-    coefficients for the dependent variable.  This is output by function
-    \code{smooth.basis}.  If this is supplied, confidence limits are
-    computed, otherwise not.
-  }
-  \item{SigmaE}{
-    Estimate of the covariances among the residuals.  This can only be
-    estimated after a preliminary analysis with \code{fRegress}.
-  }
   \item{method}{
     a character string matching either \code{fRegress} for functional
     regression estimation or \code{mode} to create the argument lists
@@ -217,7 +197,6 @@ fRegress(y, ...)
   \code{linmod} predicts a functional response from a convolution
   integral, estimating a bivariate regression function.
 
-
   In the computation of regression function estimates in
   \code{fRegress}, all independent variables are treated as if they are
   functional.  If argument \code{xfdlist} contains one or more vectors,
@@ -256,14 +235,12 @@ fRegress(y, ...)
 	and with members having the same functional parameter structure
 	as the corresponding members of \code{betalist}.  These are the
 	estimated regression coefficient functions.
-
       }
       \item{yhatfdobj}{
 	a functional parameter object (class \code{fdPar}) if the
 	dependent variable is functional or a vector if the dependent
 	variable is scalar.  This is the set of predicted by the
 	functional regression model for the dependent variable.
-
       }
       \item{Cmatinv}{
 	a matrix containing the inverse of the coefficient matrix for
@@ -271,16 +248,10 @@ fRegress(y, ...)
 	problem.  This matrix is required for function
 	\code{\link{fRegress.stderr}} that estimates confidence regions
 	for the regression coefficient function estimates.
-
       }
       \item{wt}{
 	the vector of weights input or inferred
-
       }
-
-
-   If \code{class(y)} is numeric, the \code{fRegress} object also includes:
-
       \item{df}{
 	equivalent degrees of freedom for the fit.
       }
@@ -289,30 +260,6 @@ fRegress(y, ...)
       }
       \item{gcv}{
       the generalized cross validation score.
-      }
-
-
-      If \code{class(y)} is either \code{fd} or \code{fdPar}, the
-      \code{fRegress} object returned also includes 5 other components:
-
-      \item{y2cMap}{
-	an input \code{y2cMap}
-
-      }
-      \item{SigmaE}{
-	an input \code{SigmaE}
-
-      }
-      \item{betastderrlist}{
-	an \code{fd} object estimating the standard errors of
-	\code{betaestlist}
-
-      }
-      \item{bvar}{
-	a covariance matrix
-
-      }
-      \item{c2bMap}{	a map
       }
     }
   }

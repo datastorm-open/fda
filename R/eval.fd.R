@@ -1,47 +1,3 @@
-predict.fdSmooth <- function(object, newdata=NULL, Lfdobj=0,
-                             returnMatrix=FALSE, ...){
-  if(is.null(newdata)){
-    newdata <- object$argvals
-  }
-  eval.fd(newdata, object$fd, Lfdobj, returnMatrix=returnMatrix)
-}
-
-fitted.fdSmooth <- function(object, returnMatrix=FALSE, ...){
-  newdata <- object$argvals
-  eval.fd(newdata, object$fd, 0, returnMatrix=returnMatrix)
-}
-
-residuals.fdSmooth <- function(object, returnMatrix=FALSE, ...){
-  newdata <- object$argvals
-  pred <- eval.fd(newdata, object$fd, 0, returnMatrix=returnMatrix)
-  object$y-pred
-}
-
-predict.fdPar <- function(object, newdata=NULL, Lfdobj=0,
-                          returnMatrix=FALSE, ...){
-  predict.fd(object$fd, newdata, Lfdobj,
-             returnMatrix=returnMatrix, ...)
-}
-
-predict.fd <- function(object, newdata=NULL, Lfdobj=0,
-                       returnMatrix=FALSE, ...){
-  if(is.null(newdata)){
-    basis <- object$basis
-    type <- basis$type
-    if(length(type) != 1)
-      stop('length(object$type) must be 1;  is ',
-           length(type) )
-    newdata <- {
-      if(type=='bspline')
-        unique(knots(basis, interior=FALSE))
-      else basis$rangeval
-    }
-  }
-  eval.fd(newdata, object, Lfdobj, returnMatrix=returnMatrix)
-}
-
-#  ----------------------------------------------------------------------------
-
 eval.fd <- function(evalarg, fdobj, Lfdobj=0, returnMatrix=FALSE) {
 
 #  EVAL_FD evaluates a functional data observation at argument
@@ -214,4 +170,5 @@ eval.fd <- function(evalarg, fdobj, Lfdobj=0, returnMatrix=FALSE) {
       return(as.matrix(evalarray))
   } else return(evalarray)
 }
+
 

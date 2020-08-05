@@ -28,7 +28,7 @@
 #
 #  --------------------------------------------------------------------
 
-#  Last modified 10 November 2010 by Jim Ramsay
+#  Last modified 16 July 2020 by Jim Ramsay
 
 #  attach the FDA functions
 
@@ -359,7 +359,7 @@ hipfd  <- gaitfd[,1]
 kneefd <- gaitfd[,2]
 ncurve <- dim(kneefd$coefs)[2]
 
-kneemeanfd <- mean(kneefd)
+kneemeanfd <- mean.fd(kneefd)
 
 #  define the functional parameter object for regression functions
 
@@ -377,12 +377,12 @@ xfdlist  <- list(constfd, hipfd)
 
 #  fit the current functional linear model
 
-fRegressout <- fRegress(kneefd, xfdlist, betalist)
+fRegressList <- fRegress(kneefd, xfdlist, betalist)
 
 #  set up and plot the fit functions and the regression functions
 
-kneehatfd   <- fRegressout$yhatfd
-betaestlist <- fRegressout$betaestlist
+kneehatfd   <- fRegressList$yhatfd
+betaestlist <- fRegressList$betaestlist
 
 alphafd   <- betaestlist[[1]]$fd
 hipbetafd <- betaestlist[[2]]$fd
@@ -406,8 +406,9 @@ Rsqr <- (SSE0-SSE1)/SSE0
 op <- par(mfrow=c(1,1),ask=FALSE)
 plot(gaitfine, Rsqr, type="l", ylim=c(0,0.4))
 
-#  for each case plot the function being fit, the fit,
-#                     and the mean function
+#  for each case plot the function being fit (solid blue), 
+#  the fit itself                            (dotted blue),
+#  and the mean function                     (dashed red)
 
 op <- par(mfrow=c(1,1),ask=TRUE)
 for (i in 1:ncurve) {
@@ -420,9 +421,12 @@ par(op)
 
 #  ----------  predict knee acceleration from hip acceleration --------
 
-D2kneefd     <- deriv(kneefd, 2)
-D2hipfd      <- deriv(hipfd, 2)
-D2kneemeanfd <- mean(D2kneefd)
+hipfd  <- gaitfd[,1]
+kneefd <- gaitfd[,2]
+
+D2kneefd     <- deriv.fd(kneefd, 2)
+D2hipfd      <- deriv.fd(hipfd, 2)
+D2kneemeanfd <- mean.fd(D2kneefd)
 
 #  set up the list of covariate objects
 
@@ -430,12 +434,12 @@ D2xfdlist  <- list(constfd,D2hipfd)
 
 #  fit the current functional linear model
 
-D2fRegressout <- fRegress(D2kneefd, D2xfdlist, betalist)
+D2fRegressList <- fRegress(D2kneefd, D2xfdlist, betalist)
 
 #  set up and plot the fit functions and the regression functions
 
-D2kneehatfd   <- D2fRegressout$yhatfd
-D2betaestlist <- D2fRegressout$betaestlist
+D2kneehatfd   <- D2fRegressList$yhatfd
+D2betaestlist <- D2fRegressList$betaestlist
 
 D2alphafd   <- D2betaestlist[[1]]$fd
 D2hipbetafd <- D2betaestlist[[2]]$fd
@@ -458,7 +462,9 @@ D2Rsqr <- (D2SSE0-D2SSE1)/D2SSE0
 par(mfrow=c(1,1),ask=FALSE)
 plot(gaitfine, D2Rsqr, type="l", ylim=c(0,0.5))
 
-#  for each case plot the function being fit, the fit, and the mean function
+#  for each case plot the function being fit (solid blue), 
+#  the fit itself                            (dotted blue),
+#  and the mean function                     (dashed red)
 
 op <- par(mfrow=c(1,1),ask=TRUE)
 for (i in 1:ncurve) {
@@ -470,7 +476,12 @@ for (i in 1:ncurve) {
 }
 par(op)
 
-
+#  Conclusion:  The improvement in fit to each knee curve using the
+#  concurrent model with hip as the covariate is relatively
+#  minor relative to what is offered by the mean curve.
+#  This is also true of the improvement in the fit of 
+#  acceleration.
+#  Oh well  ... It was worth a try!
 
 
 

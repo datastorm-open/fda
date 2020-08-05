@@ -460,6 +460,32 @@ summary.basisfd <- function(object, ...)
   }
 }
 
+#  -------------------------------------------------------------------------------------------
+#                  predict method for basisfd class
+#  -------------------------------------------------------------------------------------------
+
+predict.basisfd <- function(object, newdata=NULL, Lfdobj=0,
+                            returnMatrix=FALSE, ...){
+  ##
+  ## 1.  newdata?
+  ##
+  if(is.null(newdata)){
+    type <- object$type
+    if(length(type) != 1)
+      stop('length(object$type) must be 1;  is ',
+           length(type) )
+    newdata <- {
+      if(type=='bspline') {
+        unique(knots(object, interior=FALSE))
+      } else object$rangeval
+    }
+  }
+  ##
+  ## 2.  eval.basis
+  ##
+  eval.basis(newdata, object, Lfdobj, returnMatrix)
+}
+
 #  --------------------------------------------------------------------------
 #  equality for basisfd class
 #  --------------------------------------------------------------------------
@@ -705,4 +731,3 @@ summary.basisfd <- function(object, ...)
   basisobj$dropind <- dropind
   return(basisobj)
 }
-

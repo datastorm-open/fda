@@ -1,10 +1,3 @@
-#  setClass for "fdPar"
-
-# setClass("fdPar", representation(fd       = "fd",
-#                                  Lfd      = "Lfd",
-#                                  lambda   = "numeric",
-#                                  estimate = "logical",
-#                                  penmat   = "matrix",))
 
 #  Generator function of class fdPar
 
@@ -183,6 +176,16 @@ summary.fdPar <- function(object, ...)
   cat(paste("\nEstimation status =",object$estimate,"\n"))
       if (!is.null(object$penmat))
           print(paste("Penalty matrix dimensions:",dim(object$penmat)))
+}
+
+#  -------------------------------------------------------------------------------------------
+#                 predict method for fdPar objects
+#  -------------------------------------------------------------------------------------------
+
+predict.fdPar <- function(object, newdata=NULL, Lfdobj=0,
+                          returnMatrix=FALSE, ...){
+  predict.fd(object$fd, newdata, Lfdobj,
+             returnMatrix=returnMatrix, ...)
 }
 
 

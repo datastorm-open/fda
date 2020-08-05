@@ -65,8 +65,11 @@
 #  for a variable like precipitation.
 #  -----------------------------------------------------------------------
 
-#  Last modified 5 November 2008 by Jim Ramsay
-#  Previously modified 2 March 2007 by Spencer Graves
+#  Last modified 16 July 2020 by Jim Ramsay
+
+#  attach the FDA functions
+
+library(fda)
 
 #  ------------------------  input the data  -----------------------
 
@@ -871,20 +874,24 @@ text(harmscr[,3], harmscr[,4], CanadianWeather$place, col=4)
 #  set up a smaller basis using only 65 Fourier basis functions
 #  to save some computation time
 
-#smallnbasis <- 65
-#smallbasis  <- create.fourier.basis(c(0, 365), smallnbasis)
 smallbasis  <- create.fourier.basis(c(0, 365), 65)
 
-tempfd      <- smooth.basis(day.5, CanadianWeather$dailyAv[,,"Temperature.C"],
-                       smallbasis)$fd
+#  data to be smoothed are average temperatures
+
+dailyAvTemp <- CanadianWeather$dailyAv[,,"Temperature.C"]
+
+# smooth the data without a roughness penalty
+
+tempfd      <- smooth.basis(day.5, dailyAvTemp, smallbasis)$fd
+
+# compute y2cMap, the matrix mapping observations into coefficient values
 
 smallbasismat <- eval.basis(day.5, smallbasis)
 y2cMap <- solve(crossprod(smallbasismat), t(smallbasismat))
 
-#  names for climate zones
+#  names for four climate zones and the whole country.
 
-zonenames <- c("Canada  ",
-               "Atlantic", "Pacific ", "Contintal", "Arctic  ")
+zonenames <- c("Canada  ", "Atlantic", "Pacific ", "Contintal", "Arctic  ")
 
 #  indices for (weather stations in each of four climate zones
 
@@ -896,7 +903,7 @@ pacindex <- index[CanadianWeather$region == "Pacific"]
 conindex <- index[CanadianWeather$region == "Continental"]
 artindex <- index[CanadianWeather$region == "Arctic"]
 
-#  Set up a design matrix having a column for (the grand mean, and
+#  Set up a design matrix having a column for the grand mean, and
 #    a column for (each climate zone effect. Add a dummy contraint
 #    observation
 
@@ -918,7 +925,7 @@ zlabels[[5]] <- "Arctic"
 
 #  attach a row of 0, 1, 1, 1, 1 to force zone
 #  effects to sum to zero, and define first regression
-#  function as grand mean for (all stations
+#  function as grand mean for all stations
 
 z36    <- matrix(1,1,5)
 z36[1] <- 0
@@ -927,26 +934,36 @@ zmat   <- rbind(zmat, z36)
 #  revise YFDOBJ by adding a zero function
 
 coef   <- tempfd$coefs
+# display summary of structure of coef matrix
 str(coef)
 # add a 0 column # 36 to coef
 coef36 <- cbind(coef,matrix(0,65,1))
 tempfd$coefs <- coef36
 
-p <- 5
+#  put the five numerical covariates into list format
+
+p <- 5  #  number of covariates or predictors
 xfdlist <- vector("list",p)
 for (j in 1:p) xfdlist[[j]] <- zmat[,j]
 
-#  set up the basis for (the regression functions
+#  set up the basis for the regression functions
+#  a small number of basis functions is used because
+#  we are interested only in gross effects
 
 nbetabasis <- 11
 betabasis  <- create.fourier.basis(c(0, 365), nbetabasis)
 
-#  set up the functional parameter object for (the regression fns.
+#  set up the functional parameter object for the regression fns.
 
 betafd    <- fd(matrix(0,nbetabasis,1), betabasis)
 estimate  <- TRUE
 lambda    <- 0
+#  the harmonic acceleration operator
+harmaccelLfd365 <- vec2Lfd(c(0,(2*pi/365)^2,0), c(0, 365))
+
 betafdPar <- fdPar(betafd, harmaccelLfd365, lambda, estimate)
+
+#  put the functional parameter object into list format
 
 betalist <- vector("list",p)
 for (j in 1:p) betalist[[j]] <- betafdPar
@@ -956,10 +973,12 @@ for (j in 1:p) betalist[[j]] <- betafdPar
 
 fRegressList <- fRegress(tempfd, xfdlist, betalist)
 
+#  extract the list of estimated regression functions
+
+betaestlist <- fRegressList$betaestlist
 
 #  plot regression functions
 
-betaestlist <- fRegressList$betaestlist
 par(mfrow=c(3,2))
 for (j in 1:p) {
 	betaestParfdj <- betaestlist[[j]]
@@ -968,36 +987,38 @@ for (j in 1:p) {
 	title(zlabels[[j]])
 }
 
-#  plot predicted functions
+#  plot predicted functions in lower right
 
 yhatfdobj <- fRegressList$yhatfdobj
 plot(yhatfdobj,main='Predicted Temperature',)
 
 #  compute residual matrix and get covariance of residuals
 
-#yhatmat  <- eval.fd(day.5, yhatfdobj)
 yhatmat  <- predict(yhatfdobj, day.5)
 ymat     <- eval.fd(day.5, tempfd)
 temprmat <- ymat[,1:35] - yhatmat[,1:35]
 SigmaE   <- var(t(temprmat))
 
-#  plot covariance surface for errors
+#  contour plot of covariance surface for errors
 
 par(mfrow=c(1,1))
 contour(SigmaE, xlab="Day", ylab="Day")
 lines(c(0, 365), c(0, 365),lty=4)
 
+#  comnpute the standard deviation of the errors
+
+stddevE <- sqrt(diag(SigmaE))
+
 #  plot standard deviation of errors
 
 par(mfrow=c(1,1), mar=c(5,5,3,2), pty="m")
-stddevE <- sqrt(diag(SigmaE))
 plot(day.5, stddevE, type="l",
      xlab="Day", ylab="Standard error (deg C)")
 
-#  Repeat regression, this time outputting results for
-#  confidence intervals
+#  Compute confidence intervals for 
+#  regression function estimates
 
-stderrList <- fRegressStderr(fRegressList, y2cMap, SigmaE)
+stderrList <- fRegress.stderr(fRegressList, y2cMap, SigmaE)
 
 betastderrlist <- stderrList$betastderrlist
 
@@ -1013,7 +1034,7 @@ for (j in 1:p) {
 }
 par(op)
 
-#  plot regression functions with confidence limits
+#  plot regression functions with 95% confidence limits
 
 op <- par(mfrow=c(3,2))
 for (j in 1:p) {
@@ -1028,21 +1049,15 @@ for (j in 1:p) {
 }
 par(op)
 
-
-
-# Now a couple of permutation tests
+# Now a couple of permutation tests of differences between climate zones
 
 # permutation t-test between atlantic and pacific
 
 t.res = tperm.fd(tempfd[atlindex],tempfd[pacindex])
 
-
 # instead, we'll try a permutation F-test for the regression
 
 F.res = Fperm.fd(tempfd, xfdlist, betalist,cex.axis=1.5,cex.lab=1.5)
-
-
-
 
 #  -----------------------------------------------------------------------
 #         predict log precipitation from climate zone and temperature
@@ -1053,8 +1068,13 @@ F.res = Fperm.fd(tempfd, xfdlist, betalist,cex.axis=1.5,cex.lab=1.5)
 
 #  set up functional data object for log precipitation
 
-precfd <- smooth.basis(day.5, CanadianWeather$dailyAv[,,"Precipitation.mm"],
-                  smallbasis)$fd
+dailyAvPrec <- CanadianWeather$dailyAv[,,"Precipitation.mm"]
+
+#  smooth the data without a roughness penalty
+
+precfd <- smooth.basis(day.5, dailyAvPrec, smallbasis)$fd
+
+#  convert to common log values
 
 logprecmat <- log10(eval.fd(day.5, precfd))
 
@@ -1110,12 +1130,12 @@ temprfdobj$coefs <- coef36
 xfdlist[[6]]  <- temprfdobj
 betalist[[6]] <- betafdPar
 
-#  set up the basis for (the regression functions
+#  set up the basis for the regression functions
 
 nbetabasis <- 13
 betabasis  <- create.fourier.basis(c(0, 365), nbetabasis)
 
-#  set up the functional parameter object for (the regression fns.
+#  set up the functional parameter object for the regression fns.
 
 betafd    <- fd(matrix(0,nbetabasis,p), betabasis)
 estimate  <- TRUE
@@ -1138,8 +1158,8 @@ op <- par(mfrow=c(2,3),pty="s")
 for (j in 1:p) {
 	betaParfdj <- betaestlist[[j]]
 	betafdj    <- betaParfdj$fd
-    plot(betafdj)
-    title(prednames[j])
+  plot(betafdj)
+  title(prednames[j])
 }
 par(op)
 
@@ -1150,7 +1170,6 @@ plot(yhatfdobj)
 
 #  compute residual matrix and get covariance of residuals
 
-#yhatmat    <- eval.fd(day.5, yhatfdobj)
 yhatmat    <- predict(yhatfdobj, day.5)
 ymat       <- eval.fd(day.5, lnprecfd)
 lnprecrmat <- ymat[,1:35] - yhatmat[,1:35]
@@ -1158,9 +1177,9 @@ SigmaE     <- var(t(lnprecrmat))
 
 contour(SigmaE)
 
-#  repeat regression analysis to get confidence intervals
+#  get confidence intervals
 
-stderrList <- fRegressStderr(fRegressList, y2cMap, SigmaE)
+stderrList <- fRegress.stderr(fRegressList, y2cMap, SigmaE)
 
 betastderrlist <- stderrList$betastderrlist
 
@@ -1184,7 +1203,7 @@ par(op)
 #  plot regression functions with confidence limits
 
 op <- par(mfrow=c(2,3), pty="s")
-for (j in 1:p) {
+for (j in 1:5) {
 	betafdParj  <- betaestlist[[j]]
 	betafdj     <- betafdParj$fd
 	betaj       <- eval.fd(day.5, betafdj)
@@ -1197,24 +1216,22 @@ for (j in 1:p) {
 }
 par(op)
 
-
-
 #  ---------------------------------------------------------------
 #      log annual precipitation predicted by temperature profile
 #  ---------------------------------------------------------------
 
 #  set up log10 total precipitation
 
-annualprec <- log10(apply(CanadianWeather$dailyAv[,,"Precipitation.mm"],
-                          2,sum))
+annualprec <- log10(apply(dailyAvPrec, 2, sum))
 
 #  set up a smaller basis using only 65 Fourier basis functions
 #  to save some computation time
 
 smallnbasis <- 65
 smallbasis  <- create.fourier.basis(c(0, 365), smallnbasis)
-tempfd      <- smooth.basis(day.5, CanadianWeather$dailyAv[,,"Temperature.C"],
-                       smallbasis)$fd
+tempfd      <- smooth.basis(day.5, dailyAvTemp, smallbasis)$fd
+
+#  compute y2cMap matrix
 
 smallbasismat <- eval.basis(day.5, smallbasis)
 y2cMap <- solve(crossprod(smallbasismat)) %*% t(smallbasismat)
@@ -1229,8 +1246,8 @@ xfdlist <- vector("list",2)
 xfdlist[[1]] <- constantfd
 xfdlist[[2]] <- tempfd[1:35]
 
-#  set up the functional parameter object for (the regression fns.
-#  the smoothing parameter for (the temperature function
+#  set up the functional parameter object for the regression fns.
+#  the smoothing parameter for the temperature function
 #  is obviously too small here, and will be revised below by
 #  using cross-validation.
 
@@ -1252,6 +1269,8 @@ betalist[[2]] <- betafdPar2
 #  carry out the regression analysis
 
 fRegressList <- fRegress(annualprec, xfdlist, betalist)
+
+#  extract the regression coefficient list and data fit
 
 betaestlist   <- fRegressList$betaestlist
 
@@ -1287,7 +1306,7 @@ for (ilam in 1:nlam) {
     betafdPar2   <- betalisti[[2]]
     betafdPar2$lambda <- lambda
     betalisti[[2]] <- betafdPar2
-    SSE.CV[ilam]   <- fRegressCV(annualprec, xfdlist, betalisti)
+    SSE.CV[ilam]   <- fRegress.CV(annualprec, xfdlist, betalisti)$SSE.CV
     print(c(ilam, loglam[ilam], SSE.CV[ilam]))
 }
 
@@ -1335,17 +1354,17 @@ lines(annualprechat, annualprechat, lty=2)
 
 covmat <- var(cbind(annualprec, annualprechat))
 Rsqrd <- covmat[1,2]^2/(covmat[1,1]*covmat[2,2])
-#   0.7540
+#   0.75
 
-#  compute SigmaE
+#  compute SigmaE as a scalar variance times an identity matrix
 
 resid  <- annualprec - annualprechat
-SigmaE <- sum(resid^2)/(35-fRegressList$df)
-SigmaE <- SigmaE*diag(rep(1,35))
+SigmaE <- sum(resid^2)/(35-fRegressList$df)*diag(rep(1,35))
 
-#  recompute the analysis to get confidence limits
+#  compute confidence limits for estimated 
+#  regression coefficients
 
-stderrList <- fRegressStderr(fRegressList, NULL, SigmaE)
+stderrList <- fRegress.stderr(fRegressList, NULL, SigmaE)
 
 betastderrlist <- stderrList$betastderrlist
 
@@ -1375,8 +1394,6 @@ lines(c(0, 365),c(0,0),lty=2)
 
 F.res2 = Fperm.fd(annualprec, xfdlist, betalist)
 
-
-
 #  ---------------------------------------------------------------
 #         predict log precipitation from temperature
 #  ---------------------------------------------------------------
@@ -1387,12 +1404,11 @@ F.res2 = Fperm.fd(annualprec, xfdlist, betalist)
 smallnbasis <- 65
 smallbasis  <- create.fourier.basis(c(0, 365), smallnbasis)
 
-tempfd      <- smooth.basis(day.5, CanadianWeather$dailyAv[,,"Temperature.C"],
-                       smallbasis)$fd
+tempfd      <- smooth.basis(day.5, dailyAvTemp, smallbasis)$fd
 
 #  change 0's to 0.05 mm in precipitation data
 
-prectmp <- CanadianWeather$dailyAv[,,"Precipitation.mm"]
+prectmp <- dailyAvPrec
 for (j in 1:35) {
     index <- prectmp[,j] == 0
     prectmp[index,j] <- 0.05
@@ -1424,15 +1440,21 @@ yLfdobj <- harmaccelLfd365
 xlambda <- 1e9
 ylambda <- 1e7
 
+sbasis <- create.fourier.basis(c(0,365), 7)
+tbasis <- create.fourier.basis(c(0,365), 7)
+
+stfd <- bifd(matrix(0,7,7), sbasis, tbasis)
+
+betalist <- vector("list",2)
+betalist[[1]] <- fdPar(tbasis)
+betalist[[2]] <- bifdPar(stfd)
+
 #  compute the linear model
 
-wtvec <- matrix(1,35,1)
+linmodstr <- linmod(tempfd, lnprecfd, betalist)
 
-linmodstr <- linmod(daytempfd, lnprecfd, wtvec,
-                    xLfdobj, yLfdobj, xlambda, ylambda)
-
-afd <- linmodstr$alphafd   #  The intercept function
-bfd <- linmodstr$regfd     #  The bivariate regression function
+afd <- linmodstr$beta0estfd   #  The intercept function
+bfd <- linmodstr$beta1estbifd     #  The bivariate regression function
 
 #  plot the intercept function
 
@@ -1446,32 +1468,40 @@ persp(weeks, weeks, bfdmat, xlab="Day(t)", ylab="Day(s)")
 
 #  Get fitted functions
 
-lnprechatfd <- linmodstr$yhatfd
+lnprechatfd <- linmodstr$yhatfdobj
 
-# Compute mean function as a benchmark for (comparison
+# Compute mean function as a benchmark for comparison
 
-lnprecmeanfd <- mean(lnprecfd)
+lnprecmeanfd <- mean.fd(lnprecfd)
 lnprechat0   <- eval.fd(weeks, lnprecmeanfd)
 
-#  Plot actual observed, fitted, and mean log precipitation for
-#      each weather station,
+#  Plot actual observed (black circles), fitted (smooth red line), 
+#  and mean log precipitation (rough blue line) for each weather station
+#  along with an squared correlation type ratio that assesses
+#  fit relative to that that provided by the national average
 
 lnprecmat    <- eval.fd(weeks, lnprecfd)
 lnprechatmat <- eval.fd(weeks, lnprechatfd)
 plotrange    <- c(min(lnprecmat),max(lnprecmat))
-#par(ask=TRUE)
+par(ask=TRUE)
 for (i in 1:35) {
     lnpreci    <- eval.fd(lnprecfd[i],    weeks)
     lnprechati <- eval.fd(lnprechatfd[i], weeks)
     SSE <- sum((lnpreci-lnprechati)^2)
     SSY <- sum((lnpreci-lnprechat0)^2)
     RSQ <- (SSY-SSE)/SSY
-    plot(weeks, lnprecmat[,i], type="l", lty=4, ylim=plotrange,
+    plot(weeks, lnprecmat[,i], type="p", col=1, ylim=plotrange,
          xlab="Day", ylab="Log Precipitation",
          main=paste(CanadianWeather$place[i],"  R^2 =",round(RSQ,3)))
-    lines(weeks, lnprechatmat[,i])
+    lines(weeks, lnprechatmat[,i], col=2)
+    lines(weeks, lnprechat0,       col=4)
 }
 par(ask=FALSE)
+
+#  We see that the fit is quite good relative to the mean fit for  
+#  the eastern and central weather stations, but fails in interesting 
+#  ways for Calgary, Kamloops, Vancouver, Victoria, Prince Rupert,
+#  Dawson and Resolute.
 
 #  -------------------------------------------------------------------
 #              Smooth Vancouver's precipitation with a

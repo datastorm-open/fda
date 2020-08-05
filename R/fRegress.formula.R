@@ -354,13 +354,9 @@ fRegress.formula <- function(y, data=NULL, betalist=NULL,
   method <- match.arg(method)
   if(method=='model')
     return(fRegressList)
-  {
-    if(inherits(y, 'fdPar'))
-      do.call('fRegress.fdPar', fRegressList)
-    else
+  else
 ##
 ## 8.  class(y) == 'numeric'
 ##
-      do.call('fRegress.numeric', fRegressList)
-  }
+    do.call('fRegress', fRegressList)
 }

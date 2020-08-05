@@ -592,3 +592,16 @@ smooth.basis1 <- function (argvals=1:n, y, fdParobj,
   
 }
 
+#  -------------------------------------------------------------------------------------------
+#              predict method for fdSmooth objects
+#  -------------------------------------------------------------------------------------------
+
+predict.fdSmooth <- function(object, newdata=NULL, Lfdobj=0,
+                             returnMatrix=FALSE, ...){
+  if(is.null(newdata)){
+    newdata <- object$argvals
+  }
+  eval.fd(newdata, object$fd, Lfdobj, returnMatrix=returnMatrix)
+}
+
+

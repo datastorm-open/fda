@@ -8,7 +8,7 @@
 #  can be found in the file canadian-weather.R, set up in 2008 by 
 #  Spencer Graves.
 
-#  Last modified 10 January 2020
+#  Last modified 16 July 2020
 
 station <- CanadianWeather$station
 
@@ -143,7 +143,7 @@ plot(daytime, stddevE, type="l",
 #  Repeat regression, this time outputting results for
 #  confidence intervals
 
-stderrList <- fRegressStderr(fRegressList, tempy2cMap, SigmaE)
+stderrList <- fRegress.stderr(fRegressList, tempy2cMap, SigmaE)
 
 betastderrlist <- stderrList$betastderrlist
 
@@ -269,7 +269,7 @@ plot(daytime, stddevE, type="l",
 #  Repeat regression, this time outputting results for
 #  confidence intervals
 
-stderrList <- fRegressStderr(fRegressList, precy2cMap, SigmaE)
+stderrList <- fRegress.stderr(fRegressList, precy2cMap, SigmaE)
 
 betastderrlist <- stderrList$betastderrlist
 
@@ -312,11 +312,6 @@ precresfdobj <- smoothList$fd
 par(mfrow=c(1,1))
 plot(precresfdobj, ask=F)
  
-#  save temperature and precipitation residual objects
-
-weatherANOVA <- list(tempresfd=tempresfdobj, precpresfd=precresfdobj)
-
-save(weatherANOVA, file="weatherANOVA")
 
 
 

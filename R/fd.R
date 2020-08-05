@@ -1,8 +1,3 @@
-#  setClass for "fd"
-
-# setClass("fd",    representation(coef     = "array",
-#                                  basisobj = "basisfd",
-#                                  fdnames  = "list"))
 
 #  Generator function of class fd
 
@@ -945,3 +940,45 @@ sum.fd <- function(..., na.rm=FALSE)
   concatfd <- fd(coef, basisfd, fdnames)
   return(concatfd)
 }
+
+#  -------------------------------------------------------------------------------------------
+#                   predict method for fd objects
+#  -------------------------------------------------------------------------------------------
+
+predict.fd <- function(object, newdata=NULL, Lfdobj=0,
+                       returnMatrix=FALSE, ...){
+  if(is.null(newdata)){
+    basis <- object$basis
+    type <- basis$type
+    if(length(type) != 1)
+      stop('length(object$type) must be 1;  is ',
+           length(type) )
+    newdata <- {
+      if(type=='bspline')
+        unique(knots(basis, interior=FALSE))
+      else basis$rangeval
+    }
+  }
+  eval.fd(newdata, object, Lfdobj, returnMatrix=returnMatrix)
+}
+
+#  -------------------------------------------------------------------------------------------
+#                   fitted method for fd objects
+#  -------------------------------------------------------------------------------------------
+
+fitted.fdSmooth <- function(object, returnMatrix=FALSE, ...){
+  newdata <- object$argvals
+  eval.fd(newdata, object$fd, 0, returnMatrix=returnMatrix)
+}
+
+#  -------------------------------------------------------------------------------------------
+#                   residual method for fd objects
+#  -------------------------------------------------------------------------------------------
+
+residuals.fdSmooth <- function(object, returnMatrix=FALSE, ...){
+  newdata <- object$argvals
+  pred <- eval.fd(newdata, object$fd, 0, returnMatrix=returnMatrix)
+  object$y-pred
+}
+
+
